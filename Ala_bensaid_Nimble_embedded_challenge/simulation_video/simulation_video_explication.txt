@@ -1,0 +1,10 @@
+This video simulate mqtt publish and subscribe (without the serial communication between python and ESP32)
+For the embedded system ( ESP32 WROOM + arduino IDE + FreeRTOS + pubsubclient library )
+for the application : python 3.9 (paho mqtt library + multithreading )
+
+explication : 
+1/we set the command_targetPosition = 16 in the Arduino IDE (this one will be sent to python using mqtt publish)
+2/ in python we set the feedbackStrucut ( current_position : 3 , target_position : 16 ) (those value will be sent to ESP32 using mqtt)
+3/ execute python file ( and we receive the target_position 16)
+4/open Arduino Serial monitor and we see the values of feedback struct received from python application
+5/ next we change the value of feedback.TargetPosition to 7 and as result the ESP32 update the new value as shown in the serial monitor

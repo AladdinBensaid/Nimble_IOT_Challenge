@@ -1,0 +1,65 @@
+Design and implement an embedded system that receives commands via serial port and controls a simulated motor via MQTT.
+
+Design and implement a python application that sends commands via serial and simulates a motor via MQTT command and feedback.
+
+
+************************************************************************************************
+Python Implementation
+Implement a python CLI program with three threads:
+
+Main Thread
+When triggered by “Input Thread”, send a command (always a char C followed by a CommandStruct, see Communication Structures section) through serial to the FreeRTOS application with a target_position set by “Input Thread”.
+Every 2 seconds, ask the FreeRTOS application for feedback by sending a char F through serial, read bytes from serial and reorganize the bytes into FeedbackStruct struct, and print out the feedback information to the terminal.
+Constantly check if the “Input Thread” has set a quit signal, if set, send a char Q  to the FreeRTOS application to signal that it should also quit and cleanly quit the python program.
+
+
+Input Thread
+Wait for user to set target_position range (valid from MIN(int32_t) to MAX(int32_t))
+Optionally allow the user to quit the program with q or similar.
+
+
+Simulation Thread
+Simulate FeedbackStruct structure and set both  current_position and target_position to 0.
+Listen for CommandStruct via MQTT topic which will contain a new target_position.
+Simulate motor movement by updating the value of current_position towards the target_position at a rate of 100units/second.
+Publish FeedbackStruct to a separate MQTT topic at a rate of once per second.
+*************************************************************************************************
+
+
+
+Embedded Implementation
+Implement an embedded FreeRTOS application with a main thread and three tasks:
+
+
+Main Thread
+On start, construct a zeroed CommandStruct.
+This structure will be updated by Serial Task.
+On start, construct a zeroed FeedbackStruct.
+This structure will be updated by MQTT RX Task.
+Construct a “Command Queue” with type CommandStruct.
+Compare FeedbackStruct.current_position vs CommandStruct.target_position. If the values are not equal trigger an MQTT TX by placing CommandStruct.target_position onto the “Command Queue”
+Constantly check if the Serial Task has set the quit signal, if set, cleanly quit the thread and release allocated memory if any.
+
+
+
+Serial Task
+On loop, check for serial message availability.
+If serial available, read the first character received from the serial.
+If received C:
+Continue reading 4 more bytes to construct a complete CommandStruct.
+Update the CommandStruct.
+If received F:
+Write the FeedbackStruct to the serial.
+If received Q:
+Set the quit signal.
+
+
+MQTT TX Task
+On loop, check if the “Command Queue” is empty.
+If not empty,
+Take a command from the queue, send this command to motor simulation via MQTT topic.
+
+
+MQTT RX Task
+On loop, check for feedback from the simulated motor via MQTT. (Should be sent by python simulation thread at a rate of 1 per second).
+If new feedback then update the FeedbackStruct
